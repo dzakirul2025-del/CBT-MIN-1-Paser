@@ -1,0 +1,6 @@
+{
+  "name": "MIN 1 Paser CBT",
+  "description": "Madrasah Digital Assessment System untuk MIN 1 Paser. Sistem CBT modern dengan Bank Soal terstruktur, Generator Soal AI Gemini, Ruang Ujian Siswa responsif & tangguh, Pengawasan Real-time, dan Analisis Butir Soal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
