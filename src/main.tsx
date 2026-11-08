@@ -1,5 +1,18 @@
-import {createRoot} from 'react-dom/client';
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import { ErrorBoundary } from './components/common/ErrorBoundary.tsx';
 import './index.css';
 
-createRoot(document.getElementById('root')!).render(<App />);
+const rootEl = document.getElementById('root');
+if (rootEl) {
+  createRoot(rootEl).render(
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
+}

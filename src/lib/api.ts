@@ -3,11 +3,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+async function safeJson(res: Response, fallback: any = null) {
+  if (!res.ok) return fallback;
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return fallback;
+  }
+  try {
+    return await res.json();
+  } catch (e) {
+    return fallback;
+  }
+}
+
 // Client-side API service connecting to full-stack Express server
 export const api = {
   async getBootstrap() {
-    const res = await fetch('/api/bootstrap');
-    return res.json();
+    try {
+      const res = await fetch('/api/bootstrap');
+      return await safeJson(res, null);
+    } catch (e) {
+      return null;
+    }
   },
 
   async login(username: string, password?: string, role?: string) {
@@ -17,8 +34,8 @@ export const api = {
       body: JSON.stringify({ username, password, role })
     });
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Login gagal');
+      const err = await safeJson(res, {});
+      throw new Error(err?.error || 'Login gagal atau server belum siap');
     }
     return res.json();
   },

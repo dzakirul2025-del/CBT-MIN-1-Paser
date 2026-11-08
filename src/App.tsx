@@ -29,11 +29,18 @@ import { AuditLogView } from './components/views/AuditLogView.tsx';
 import { StudentResultsView } from './components/views/StudentResultsView.tsx';
 import { UserProfile, SchoolSettings } from './types/index.ts';
 import { api } from './lib/api.ts';
+import { getInitialDb } from './lib/seed.ts';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [db, setDb] = useState<any>(null);
+  const [db, setDb] = useState<any>(() => {
+    try {
+      const cached = localStorage.getItem('min1paser_cbt_db');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return getInitialDb();
+  });
   const [loading, setLoading] = useState<boolean>(true);
   const [monitorExamId, setMonitorExamId] = useState<string>('');
 
@@ -41,9 +48,14 @@ export default function App() {
   const refreshData = async () => {
     try {
       const data = await api.getBootstrap();
-      setDb(data);
+      if (data && data.schoolSettings) {
+        setDb(data);
+        try {
+          localStorage.setItem('min1paser_cbt_db', JSON.stringify(data));
+        } catch (e) {}
+      }
     } catch (err) {
-      console.error('Failed to bootstrap app data:', err);
+      console.warn('Failed to bootstrap app data from API, operating with local state:', err);
     } finally {
       setLoading(false);
     }
@@ -80,7 +92,10 @@ export default function App() {
     setActiveTab('dashboard');
   };
 
-  if (loading) {
+  const currentDb = db || getInitialDb();
+  const schoolSettings: SchoolSettings = currentDb.schoolSettings;
+
+  if (loading && !db) {
     return (
       <div className="min-h-screen bg-[#07101e] flex flex-col items-center justify-center text-slate-300">
         <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center animate-spin mb-3">
@@ -96,35 +111,11 @@ export default function App() {
   if (!currentUser) {
     return (
       <LoginView
-        schoolSettings={db?.schoolSettings}
+        schoolSettings={schoolSettings}
         onLoginSuccess={handleLoginSuccess}
       />
     );
   }
-
-  // Default school settings fallback
-  const schoolSettings: SchoolSettings = db?.schoolSettings || {
-    id: 'min1paser',
-    name: 'MIN 1 Paser',
-    subname: 'Madrasah Digital Assessment System',
-    npsn: '60728192',
-    nsm: '111164020001',
-    address: 'Jl. Kusuma Bangsa Km. 5, Tanah Grogot, Kab. Paser',
-    subdistrict: 'Tanah Grogot',
-    district: 'Paser',
-    province: 'Kalimantan Timur',
-    postalCode: '76211',
-    phone: '(0543) 21102',
-    email: 'min1paser@kemenag.go.id',
-    website: 'https://min1paser.sch.id',
-    headmasterName: 'Drs. H. M. Syahril, M.Pd.I',
-    headmasterNip: '197108151998031004',
-    logoUrl: '',
-    academicYear: '2024/2025',
-    semester: 'Genap',
-    themeColor: '#0B192C',
-    accentColor: '#E6B325'
-  };
 
   return (
     <div className="min-h-screen bg-[#07101e] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">

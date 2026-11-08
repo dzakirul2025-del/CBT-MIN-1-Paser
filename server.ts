@@ -18,16 +18,25 @@ const isProd = process.env.NODE_ENV === 'production';
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Ensure data folder exists
-const DATA_DIR = path.resolve(process.cwd(), 'data');
+import os from 'os';
+import { getInitialDb } from './server/seed.ts';
+
+// Detect Vercel Serverless environment
+const isVercel = !!process.env.VERCEL;
+
+// Ensure data folder exists (use /tmp on Vercel serverless where process.cwd() is read-only)
+const DATA_DIR = isVercel
+  ? path.join(os.tmpdir(), 'min1paser-cbt-data')
+  : path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('[STORAGE] Could not create DATA_DIR, will use in-memory fallback:', e);
 }
-
-// Initialize seed data if file doesn't exist
-import { getInitialDb } from './server/seed.ts';
 
 function loadDb() {
   try {
@@ -36,10 +45,14 @@ function loadDb() {
       return JSON.parse(raw);
     }
   } catch (err) {
-    console.error('Error reading db.json, resetting to seed:', err);
+    console.warn('[STORAGE] Reading db.json fallback to seed:', err);
   }
   const init = getInitialDb();
-  fs.writeFileSync(DB_FILE, JSON.stringify(init, null, 2), 'utf-8');
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(init, null, 2), 'utf-8');
+  } catch (e) {
+    // Read-only filesystem warning, keeps in-memory
+  }
   return init;
 }
 
@@ -49,7 +62,7 @@ function saveDb() {
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf-8');
   } catch (err) {
-    console.error('Failed to save db.json:', err);
+    // In serverless read-only mode, updates stay in memory for the function instance
   }
 }
 
@@ -1274,4 +1287,8 @@ async function startServer() {
   });
 }
 
-startServer();
+export default app;
+
+if (!process.env.VERCEL) {
+  startServer();
+}
